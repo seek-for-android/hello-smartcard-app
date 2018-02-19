@@ -19,8 +19,29 @@ public class MainActivity extends Activity implements SEService.CallBack {
 	private SEService seService;
 
 	private Button button;
-	
-	
+	private Button joost;
+
+	private byte[] runApplet(byte[] aid, byte[] instruction) {
+		try {
+			Log.i(LOG_TAG, "Retrieve available readers...");
+			Reader[] readers = seService.getReaders();
+			if (readers.length < 1)
+				return null;
+
+			Log.i(LOG_TAG, "Create Session from the first reader...");
+			Session session = readers[0].openSession();
+			Log.i(LOG_TAG, "Create logical channel within the session...");
+			Channel channel = session.openLogicalChannel(aid);
+
+			Log.i(LOG_TAG, "Send HelloWorld APDU command");
+			byte[] respApdu = channel.transmit(instruction);
+			channel.close();
+			return respApdu;
+		} catch (Exception e) {
+			Log.e(LOG_TAG, "Error occured:", e);
+			return null;
+		}
+	}
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 
@@ -30,49 +51,63 @@ public class MainActivity extends Activity implements SEService.CallBack {
 		layout.setLayoutParams(new LayoutParams(
 				LayoutParams.WRAP_CONTENT, 
 				LayoutParams.WRAP_CONTENT));
-		
+
 		button = new Button(this);
 		button.setLayoutParams(new LayoutParams(
-				LayoutParams.WRAP_CONTENT, 
+				LayoutParams.WRAP_CONTENT,
 				LayoutParams.WRAP_CONTENT));
-		
+
 		button.setText("Click Me");
 		button.setEnabled(false);
 		button.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
-				try {
-					Log.i(LOG_TAG, "Retrieve available readers...");
-					Reader[] readers = seService.getReaders();
-					if (readers.length < 1)
-						return;
-
-					Log.i(LOG_TAG, "Create Session from the first reader...");
-					Session session = readers[0].openSession();
-
-					Log.i(LOG_TAG, "Create logical channel within the session...");
-					Channel channel = session.openLogicalChannel(new byte[] {
-							(byte) 0xD2, 0x76, 0x00, 0x01, 0x18, 0x00, 0x02,
-							(byte) 0xFF, 0x49, 0x50, 0x25, (byte) 0x89,
-							(byte) 0xC0, 0x01, (byte) 0x9B, 0x01 });
-
-					Log.i(LOG_TAG, "Send HelloWorld APDU command");
-					byte[] respApdu = channel.transmit(new byte[] {
-							(byte) 0x90, 0x10, 0x00, 0x00, 0x00 });
-
-					channel.close();
-
+				byte[] respApdu = runApplet(
+						new byte[] {
+								(byte) 0xD2, 0x76, 0x00, 0x01, 0x18, 0x00, 0x02,
+								(byte) 0xFF, 0x49, 0x50, 0x25, (byte) 0x89,
+								(byte) 0xC0, 0x01, (byte) 0x9B, 0x01 },
+						new byte[] {
+								(byte) 0x90, 0x10, 0x00, 0x00, 0x00 }
+				);
+				if (respApdu == null) {
+					Toast.makeText(MainActivity.this, "ERROR", Toast.LENGTH_LONG).show();
+				} else {
 					// Parse response APDU and show text but remove SW1 SW2 first
 					byte[] helloStr = new byte[respApdu.length - 2];
 					System.arraycopy(respApdu, 0, helloStr, 0, respApdu.length - 2);
 					Toast.makeText(MainActivity.this, new String(helloStr), Toast.LENGTH_LONG).show();
-				} catch (Exception e) {
-					Log.e(LOG_TAG, "Error occured:", e);
-					return;
 				}
 			}
 		});
 
 		layout.addView(button);
+		joost = new Button(this);
+		joost.setLayoutParams(new LayoutParams(
+				LayoutParams.WRAP_CONTENT,
+				LayoutParams.WRAP_CONTENT));
+
+		joost.setText("Joost");
+		joost.setEnabled(false);
+		joost.setOnClickListener(new OnClickListener() {
+			public void onClick(View v) {
+				byte[] respApdu = runApplet(
+						new byte[] {
+								(byte)0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01 },
+						new byte[] {
+								(byte)0x80, 0x00, 0x00, 0x00, 0x04 }
+				);
+				if (respApdu == null) {
+					Toast.makeText(MainActivity.this, "ERROR", Toast.LENGTH_LONG).show();
+				} else {
+					// Parse response APDU and show text but remove SW1 SW2 first
+					byte[] helloStr = new byte[respApdu.length - 2];
+					System.arraycopy(respApdu, 0, helloStr, 0, respApdu.length - 2);
+					Toast.makeText(MainActivity.this, new String(helloStr), Toast.LENGTH_LONG).show();
+				}
+			}
+		});
+
+		layout.addView(joost);
 		setContentView(layout);
 
 		
@@ -97,5 +132,6 @@ public class MainActivity extends Activity implements SEService.CallBack {
 	public void serviceConnected(SEService service) {
 		Log.i(LOG_TAG, "seviceConnected()");
 		button.setEnabled(true);
+		joost.setEnabled(true);
 	}
 }
