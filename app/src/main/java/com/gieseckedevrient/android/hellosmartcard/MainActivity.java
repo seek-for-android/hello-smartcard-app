@@ -21,26 +21,21 @@ public class MainActivity extends Activity implements SEService.CallBack {
 	private Button button;
 	private Button joost;
 
-	private byte[] runApplet(byte[] aid, byte[] instruction) {
-		try {
-			Log.i(LOG_TAG, "Retrieve available readers...");
-			Reader[] readers = seService.getReaders();
-			if (readers.length < 1)
-				return null;
-
-			Log.i(LOG_TAG, "Create Session from the first reader...");
-			Session session = readers[0].openSession();
-			Log.i(LOG_TAG, "Create logical channel within the session...");
-			Channel channel = session.openLogicalChannel(aid);
-
-			Log.i(LOG_TAG, "Send HelloWorld APDU command");
-			byte[] respApdu = channel.transmit(instruction);
-			channel.close();
-			return respApdu;
-		} catch (Exception e) {
-			Log.e(LOG_TAG, "Error occured:", e);
+	private byte[] runApplet(byte[] aid, byte[] instruction) throws Exception {
+		Log.i(LOG_TAG, "Retrieve available readers...");
+		Reader[] readers = seService.getReaders();
+		if (readers.length < 1)
 			return null;
-		}
+
+		Log.i(LOG_TAG, "Create Session from the first reader...");
+		Session session = readers[0].openSession();
+		Log.i(LOG_TAG, "Create logical channel within the session...");
+		Channel channel = session.openLogicalChannel(aid);
+
+		Log.i(LOG_TAG, "Send HelloWorld APDU command");
+		byte[] respApdu = channel.transmit(instruction);
+		channel.close();
+		return respApdu;
 	}
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -61,21 +56,27 @@ public class MainActivity extends Activity implements SEService.CallBack {
 		button.setEnabled(false);
 		button.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
-				byte[] respApdu = runApplet(
-						new byte[] {
-								(byte) 0xD2, 0x76, 0x00, 0x01, 0x18, 0x00, 0x02,
-								(byte) 0xFF, 0x49, 0x50, 0x25, (byte) 0x89,
-								(byte) 0xC0, 0x01, (byte) 0x9B, 0x01 },
-						new byte[] {
-								(byte) 0x90, 0x10, 0x00, 0x00, 0x00 }
-				);
-				if (respApdu == null) {
-					Toast.makeText(MainActivity.this, "ERROR", Toast.LENGTH_LONG).show();
-				} else {
-					// Parse response APDU and show text but remove SW1 SW2 first
-					byte[] helloStr = new byte[respApdu.length - 2];
-					System.arraycopy(respApdu, 0, helloStr, 0, respApdu.length - 2);
-					Toast.makeText(MainActivity.this, new String(helloStr), Toast.LENGTH_LONG).show();
+				try {
+					byte[] respApdu = runApplet(
+							new byte[] {
+									(byte) 0xD2, 0x76, 0x00, 0x01, 0x18, 0x00, 0x02,
+									(byte) 0xFF, 0x49, 0x50, 0x25, (byte) 0x89,
+									(byte) 0xC0, 0x01, (byte) 0x9B, 0x01 },
+							new byte[] {
+									(byte) 0x90, 0x10, 0x00, 0x00, 0x00 }
+					);
+					if (respApdu == null) {
+						Toast.makeText(MainActivity.this, "Error: respApdu == null", Toast.LENGTH_LONG).show();
+					} else {
+						// Parse response APDU and show text but remove SW1 SW2 first
+						byte[] helloStr = new byte[respApdu.length - 2];
+						System.arraycopy(respApdu, 0, helloStr, 0, respApdu.length - 2);
+						Toast.makeText(MainActivity.this, new String(helloStr), Toast.LENGTH_LONG).show();
+					}
+				} catch (Exception e) {
+					String message = "Exception:" + e.getMessage();
+					Log.e(LOG_TAG, message);
+					Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
 				}
 			}
 		});
@@ -90,19 +91,24 @@ public class MainActivity extends Activity implements SEService.CallBack {
 		joost.setEnabled(false);
 		joost.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
-				byte[] respApdu = runApplet(
-						new byte[] {
-								(byte)0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01 },
-						new byte[] {
-								(byte)0x80, 0x00, 0x00, 0x00, 0x04 }
-				);
-				if (respApdu == null) {
-					Toast.makeText(MainActivity.this, "ERROR", Toast.LENGTH_LONG).show();
-				} else {
-					// Parse response APDU and show text but remove SW1 SW2 first
-					byte[] helloStr = new byte[respApdu.length - 2];
-					System.arraycopy(respApdu, 0, helloStr, 0, respApdu.length - 2);
-					Toast.makeText(MainActivity.this, new String(helloStr), Toast.LENGTH_LONG).show();
+				try {
+					byte[] respApdu = runApplet(
+							new byte[] {
+									(byte)0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01 },
+							new byte[] {
+									(byte)0x80, 0x00, 0x00, 0x00, 0x04 }
+					);
+					if (respApdu == null) {
+						Toast.makeText(MainActivity.this, "Error: respApdu == null", Toast.LENGTH_LONG).show();
+					} else {
+						// Parse response APDU and show text but remove SW1 SW2 first
+						byte[] helloStr = new byte[respApdu.length - 2];
+						System.arraycopy(respApdu, 0, helloStr, 0, respApdu.length - 2);
+						Toast.makeText(MainActivity.this, new String(helloStr), Toast.LENGTH_LONG).show();
+					}
+				} catch (Exception e) {
+					String message = "Exception:" + e.getMessage();
+					Log.e(LOG_TAG, message);
 				}
 			}
 		});
