@@ -25,10 +25,13 @@ public class MainActivity extends Activity implements SEService.CallBack {
     };
     public final static byte[] AID_JOOSTAPPLET = { (byte) 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x01 };
     public final static byte[] AID_3GPP = { (byte) 0xA0, 0x00, 0x00, 0x00, (byte) 0x87 };
+    public final static byte[] AID_ISOAPPLET = { (byte) 0xF2, (byte) 0x76, (byte) 0xA2, (byte) 0x88, (byte) 0xBC, (byte) 0xFB, (byte) 0xA6, (byte) 0x9D, (byte) 0x34, (byte) 0xF3, (byte) 0x10, (byte) 0x01 };
 
 	private Button hello;
     private Button joost;
     private Button eduroam;
+    private Button telecom;
+
     private SmartcardIO mSmartcardIO;
 
     private void loge(String message) {
@@ -90,22 +93,55 @@ public class MainActivity extends Activity implements SEService.CallBack {
             }
         }
     }
-    private class MyOnClickListener1 implements OnClickListener {
-        final String TAG = MyOnClickListener1.class.getSimpleName();
+
+    private class EduroamOnClickListener implements OnClickListener {
+        final String TAG = EduroamOnClickListener.class.getSimpleName();
         private SmartcardIO mSmartcardIO;
 
-        public MyOnClickListener1(SmartcardIO smartcardIO)  throws IOException {
+        public EduroamOnClickListener(SmartcardIO smartcardIO)  throws IOException {
             mSmartcardIO = smartcardIO;
+        }
+
+        public void showEduroam() throws IOException {
+            mSmartcardIO.openChannel(AID_ISOAPPLET);
+            Eduroam eduroam = new Eduroam(mSmartcardIO);
+            byte data[] = eduroam.readEduroam();
+            if (data != null) {
+                logd("user: " + Eduroam.readStringFromByteArray(data, Eduroam.OFFSET_USER));
+                logd("password: " + Eduroam.readStringFromByteArray(data, Eduroam.OFFSET_PASSWORD));
+            }
         }
 
         @Override
         public void onClick(View view) {
             try {
-                mSmartcardIO.openChannel(AID_3GPP);
-                // select EXT1
-                Telecom telecom = new Telecom(mSmartcardIO);
-                logd("user: " + telecom.readData(Telecom.EF_EXT1, Telecom.RECORD_USER));
-                logd("password: " + telecom.readData(Telecom.EF_EXT1, Telecom.RECORD_PASSWORD));
+                showEduroam();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private class TelecomOnClickListener implements OnClickListener {
+        final String TAG = EduroamOnClickListener.class.getSimpleName();
+        private SmartcardIO mSmartcardIO;
+
+        public TelecomOnClickListener(SmartcardIO smartcardIO)  throws IOException {
+            mSmartcardIO = smartcardIO;
+        }
+
+        public void showTelecom() throws IOException {
+            mSmartcardIO.openChannel(AID_3GPP);
+            // select EXT1
+            Telecom telecom = new Telecom(mSmartcardIO);
+            logd("user: " + telecom.readData(Telecom.EF_EXT1, Telecom.RECORD_USER));
+            logd("password: " + telecom.readData(Telecom.EF_EXT1, Telecom.RECORD_PASSWORD));
+        }
+
+        @Override
+        public void onClick(View view) {
+            try {
+                showTelecom();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -159,8 +195,17 @@ public class MainActivity extends Activity implements SEService.CallBack {
 
             eduroam.setEnabled(false);
             eduroam.setText("eduroam");
-            eduroam.setOnClickListener(new MyOnClickListener1(mSmartcardIO));
+            eduroam.setOnClickListener(new EduroamOnClickListener(mSmartcardIO));
             layout.addView(eduroam);
+            telecom = new Button(this);
+            telecom.setLayoutParams(new LayoutParams(
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT));
+
+            telecom.setEnabled(false);
+            telecom.setText("telecom");
+            telecom.setOnClickListener(new TelecomOnClickListener(mSmartcardIO));
+            layout.addView(telecom);
             setContentView(layout);
         } catch (IOException e) {
             e.printStackTrace();
@@ -172,6 +217,7 @@ public class MainActivity extends Activity implements SEService.CallBack {
         hello.setEnabled(true);
         joost.setEnabled(true);
         eduroam.setEnabled(true);
+        telecom.setEnabled(true);
     }
 
 }
