@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import org.simalliance.openmobileapi.SEService;
 import org.simalliance.openmobileapi.util.CommandApdu;
+import org.simalliance.openmobileapi.util.ResponseApdu;
 
 import java.io.IOException;
 
@@ -34,7 +35,7 @@ public class MainActivity extends Activity implements SEService.CallBack {
 
     private SmartcardIO mSmartcardIO;
 
-    private void loge(String message) {
+    void loge(String message) {
         Log.e(TAG, message);
         Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
@@ -56,7 +57,7 @@ public class MainActivity extends Activity implements SEService.CallBack {
         }
     }
 
-    private static class MyOnClickListener implements OnClickListener {
+    private class MyOnClickListener implements OnClickListener {
         final String LOG_TAG = MyOnClickListener.class.getSimpleName();
         private byte[] mAid;
         private CommandApdu mCommandApdu[];
@@ -78,18 +79,19 @@ public class MainActivity extends Activity implements SEService.CallBack {
                 int length = mCommandApdu.length;
                 for (int i = 0; i < length; i++) {
                     CommandApdu commandApdu = mCommandApdu[i];
-                    byte[] response = mSmartcardIO.runAPDU(commandApdu);
-                    if (response != null) {
-                        Log.d(LOG_TAG, "response: " + SmartcardIO.hex(response));
+                    ResponseApdu response = mSmartcardIO.runAPDU(commandApdu);
+                    if (response.isSuccess()) {
+                        byte data[] = response.getData();
+                        Log.d(LOG_TAG, "response: " + SmartcardIO.hex(data));
                         if (mResponseCallback != null) {
-                            mResponseCallback.responseCallback(response);
+                            mResponseCallback.responseCallback(data);
                         }
                     } else {
                         Log.d(LOG_TAG, "response: null");
                     }
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+               loge(e.getMessage());
             }
         }
     }
@@ -102,22 +104,26 @@ public class MainActivity extends Activity implements SEService.CallBack {
             mSmartcardIO = smartcardIO;
         }
 
-        public void showEduroam() throws IOException {
+        public void showEduroam() throws Exception {
             mSmartcardIO.openChannel(AID_ISOAPPLET);
             Eduroam eduroam = new Eduroam(mSmartcardIO);
-            byte data[] = eduroam.readEduroam();
-            if (data != null) {
+            ResponseApdu responseApdu = eduroam.readEduroam();
+            if (responseApdu.isSuccess()) {
+                byte data[] = responseApdu.getData();
                 logd("user: " + Eduroam.readStringFromByteArray(data, Eduroam.OFFSET_USER));
                 logd("password: " + Eduroam.readStringFromByteArray(data, Eduroam.OFFSET_PASSWORD));
+            } else {
+                loge("No credentials found on SIM card");
             }
+            mSmartcardIO.closeChannel();
         }
 
         @Override
         public void onClick(View view) {
             try {
                 showEduroam();
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                loge(e.getMessage());
             }
         }
     }
@@ -130,20 +136,21 @@ public class MainActivity extends Activity implements SEService.CallBack {
             mSmartcardIO = smartcardIO;
         }
 
-        public void showTelecom() throws IOException {
+        public void showTelecom() throws Exception {
             mSmartcardIO.openChannel(AID_3GPP);
             // select EXT1
             Telecom telecom = new Telecom(mSmartcardIO);
             logd("user: " + telecom.readData(Telecom.EF_EXT1, Telecom.RECORD_USER));
             logd("password: " + telecom.readData(Telecom.EF_EXT1, Telecom.RECORD_PASSWORD));
+            mSmartcardIO.closeChannel();
         }
 
         @Override
         public void onClick(View view) {
             try {
                 showTelecom();
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                loge(e.getMessage());
             }
         }
     }
@@ -213,11 +220,22 @@ public class MainActivity extends Activity implements SEService.CallBack {
 	}
 
     @Override
+    protected void onDestroy() {
+        mSmartcardIO.teardown();
+        super.onDestroy();
+    }
+
+    @Override
     public void serviceConnected(SEService seService) {
-        hello.setEnabled(true);
-        joost.setEnabled(true);
-        eduroam.setEnabled(true);
-        telecom.setEnabled(true);
+        try {
+            mSmartcardIO.setSession();
+            hello.setEnabled(true);
+            joost.setEnabled(true);
+            eduroam.setEnabled(true);
+            telecom.setEnabled(true);
+        } catch (IOException e) {
+            loge(e.getMessage());
+        }
     }
 
 }

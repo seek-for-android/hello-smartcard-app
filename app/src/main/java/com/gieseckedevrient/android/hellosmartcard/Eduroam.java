@@ -3,6 +3,7 @@ package com.gieseckedevrient.android.hellosmartcard;
 import android.util.Log;
 
 import org.simalliance.openmobileapi.util.CommandApdu;
+import org.simalliance.openmobileapi.util.ResponseApdu;
 
 import java.io.IOException;
 
@@ -16,14 +17,14 @@ public class Eduroam {
         mSmartcardIO = smartcardIO;
     }
 
-    public byte[] selectEduroam() throws IOException {
+    public ResponseApdu selectEduroam() throws IOException {
         CommandApdu c = new CommandApdu((byte)0x00, (byte)0xA4, (byte)0x00, (byte)0x00, new byte[] { 0x10, 0x00 });
         return mSmartcardIO.runAPDU(c);
     }
 
-    public byte[] readEduroam() throws IOException {
-        byte result[] = null;
-        if (selectEduroam() != null) {
+    public ResponseApdu readEduroam() throws IOException {
+        ResponseApdu result = selectEduroam();
+        if (result.isSuccess()) {
             Log.d(TAG, "reading eduroam");
             CommandApdu c = new CommandApdu((byte)0x00, (byte)0xB0, (byte)0x00, (byte)0x00);
             result = mSmartcardIO.runAPDU(c);

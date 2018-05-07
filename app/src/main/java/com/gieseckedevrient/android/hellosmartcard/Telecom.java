@@ -3,6 +3,7 @@ package com.gieseckedevrient.android.hellosmartcard;
 import android.util.Log;
 
 import org.simalliance.openmobileapi.util.CommandApdu;
+import org.simalliance.openmobileapi.util.ResponseApdu;
 
 import java.io.IOException;
 
@@ -19,16 +20,16 @@ public class Telecom {
         mSmartcardIO = smartcardIO;
     }
 
-    public byte[] readRecord(int record) throws IOException {
+    public ResponseApdu readRecord(int record) throws IOException {
         CommandApdu c = new CommandApdu((byte)0x00, (byte)0xB2, (byte)record, (byte)0x04);
         return mSmartcardIO.runAPDU(c);
     }
 
     public void readRecords() throws IOException {
         int record = 1;
-        byte data[];
-        while ((data = readRecord(record++)) != null) {
-            Log.d(TAG, SmartcardIO.hex(data));
+        ResponseApdu responseApdu;
+        while ((responseApdu = readRecord(record++)).isSuccess()) {
+            Log.d(TAG, SmartcardIO.hex(responseApdu.getData()));
         }
     }
     public static byte hi(int x) {
@@ -39,7 +40,7 @@ public class Telecom {
         return (byte) (x & 0xff);
     }
 
-    public byte[] selectTelecom(int fid) throws IOException {
+    public ResponseApdu selectTelecom(int fid) throws IOException {
         CommandApdu c = new CommandApdu((byte)0x00, (byte)0xA4, (byte)0x08, (byte)0x04, new byte[] { 0x7f, 0x10, hi(fid), lo(fid) });
         return mSmartcardIO.runAPDU(c);
     }
@@ -48,7 +49,10 @@ public class Telecom {
         byte result[] = null;
         if (selectTelecom(fid) != null) {
             Log.d(TAG, String.format("reading telecom %04X", fid));
-            result = readRecord(record);
+            ResponseApdu responseApdu = readRecord(record);
+            if (responseApdu.isSuccess()) {
+                result = responseApdu.getData();
+            }
         }
         return result;
     }
